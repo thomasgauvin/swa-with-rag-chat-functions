@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { NavBar } from './components/navbar';
 import { BlogInfo, PageWithSlugAndTitle } from './lib/types';
+import { Chatbot } from './components/chatbot';
 
 const inter = Inter({ subsets: ['latin'] })
 const wordpressUrl = process.env.WORDPRESS_URL;
@@ -39,6 +40,7 @@ export default async function RootLayout({
           <div>
             {blogInfo.description}
           </div>
+          <Chatbot />
         </footer>
       </body>
     </html>

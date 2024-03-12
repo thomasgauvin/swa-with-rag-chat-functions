@@ -1,38 +1,54 @@
-# Building an Azure Static Web Apps site using WordPress on App Service as a headless CMS
+# Add a RAG chatbot to your content-heavy static site
 
-This is a sample project that demonstrates how to build a static web app using WordPress as a headless CMS and deployed to Azure Static Web Apps. This project uses Next.js to build the static web app pulling content from the WordPress REST APIs. This repository complements the blog on this topic: [Build an Azure Static Web Apps site using WordPress as a headless CMS](https://techcommunity.microsoft.com/t5/apps-on-azure-blog/building-an-azure-static-web-apps-site-using-wordpress-on-app/ba-p/4004955). 
+This is a sample project that demonstrates how to add a chatbot to your content-heavy static site. The chatbot is grounded in the content of the website by using the retrieval augmentated generation pattern. 
+
+This sample builds upon a Next.js static site that demonstrates a content-focused site. See the original blog post to find more information about the Next.js site itself. [Build an Azure Static Web Apps site using WordPress as a headless CMS](https://techcommunity.microsoft.com/t5/apps-on-azure-blog/building-an-azure-static-web-apps-site-using-wordpress-on-app/ba-p/4004955). 
 
 ## Getting Started
 
-First, run the development server:
+
+### Start the Next.js development server
+
+1. Run the development server for the Next.js site:
 
 ```bash
+cd nextjs-site
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This should start the Next.js development server on [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Start the Azure Functions
 
-## Understand how this project uses WordPress as a headless CMS
+1. Run the Azure Functions:
 
-Let's take for instance the BlogPage component located at `app\post\[slug]\page.tsx`. This component is responsible for fetching the content from WordPress and rendering it. The `getStaticProps` function is responsible for fetching the content from WordPress. Let's take a look at the code:
-
-```tsx
-const wordpressUrl = process.env.WORDPRESS_URL;
-
-export async function generateStaticParams(){
-  const response = await fetch(`${wordpressUrl}/wp-json/wp/v2/posts?_fields[]=slug`);
-  const posts : Post[] = await response.json();
-  const paths = posts.map(post => ({
-    slug: post.slug 
-  }));
-  return paths;
-}
+```bash
+cd api
+func start
 ```
 
-In the above code snippet, we are accessing the WORDPRESS_URL that is accessible as an environment variable and defined in the .env file. This will be used as a build-time environment variable to fetch the content from WordPress.
+This should start the Azure Functions on [http://localhost:7071](http://localhost:7071).
 
-We then make a fetch request to the WordPress REST API to fetch the content of the post. The `slug` is passed as a parameter to the function and is used to fetch the content of the post. 
+### Start the Static Web Apps server
 
-The same is done for WordPress pages. Once we have this content, we can decide to render it how we want. More information on the available WordPress REST API endpoints can be found [here](https://developer.wordpress.org/rest-api/reference/).
+1. Run the Static Web Apps server:
+
+```bash
+swa start --app-devserver-url http://localhost:3000 --api-devserver-url http://localhost:7071
+```
+
+This will start the Static Web Apps server on [http://localhost:4280](http://localhost:4280) and simulate the API routing to the Azure Functions.
+
+## Deploy to Static Web Apps
+
+This sample can be directly deployed to Static Web Apps. It requires that you have a properly configured Azure AI Search, Azure OpenAI resources before you get started. This project has also been configured to use OpenAI APIs directly, so you will need to use an OpenAI API key or adapt the code to use Azure OpenAI for chat completion.
+
+1. Fork this repository.
+1. Create a new Static Web Apps resource in the Azure portal using this newly forked repository.
+1. Configure the required environment variables for the Azure Functions in the Static Web Apps portal. 
+```
+  "AI_SEARCH_KEY": "<Enter your Azure AI Search key>",
+  "AI_SEARCH_ENDPOINT": "<Enter your Azure AI Search endpoint/URL>",
+  "AI_SEARCH_INDEX": "<Enter your Azure AI Search Index>",
+  "OPENAI_KEY":"<Enter your OpenAI Key>",
+```
