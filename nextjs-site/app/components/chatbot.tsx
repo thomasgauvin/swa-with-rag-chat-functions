@@ -10,6 +10,7 @@ export const Chatbot = () => {
     "What are community standups?",
   ]);
   const [chatOpen, setChatOpen] = React.useState(false);
+  const [streamedResponse, setStreamedResponse] = React.useState('');
 
   const extractTextAndSource = (inputText: string) => {
     const match = /\[(.*?)\]/.exec(inputText);
@@ -34,14 +35,35 @@ export const Chatbot = () => {
     const response = await fetch(
       `/api/chat?question=${encodeURIComponent(questionToSubmit)}`
     );
-    const data = await response.json();
+    const body = await response.body;
 
-    // Add user message and assistant response to chat history
-    //@ts-ignore
+    const reader = body?.pipeThrough(new TextDecoderStream()).getReader();
+
+    // @ts-ignore
     setChatHistory((prev) => [
       ...prev,
-      { user: questionToSubmit, assistant: data.text },
+      { user: questionToSubmit },
     ]);
+
+    let result = '';
+    while(true){
+      const { value, done } = await reader!.read();
+      if (done) {
+        break;
+      }
+      result += value;
+      setStreamedResponse((prev) => prev + value);
+    }
+    
+    setStreamedResponse('');
+
+    // Add user message and assistant response to chat history
+    // @ts-ignore
+    setChatHistory((prev) => [
+      ...prev,
+      { assistant: result },
+    ]);
+  
     setMessage("");
     setLoading(false);
 
@@ -109,8 +131,8 @@ export const Chatbot = () => {
               className="p-4"
               id="chat-history"
               style={{
-                maxHeight: "15rem",
-                minHeight: "15rem",
+                maxHeight: "25rem",
+                minHeight: "25rem",
                 overflowY: "auto",
               }}
             >
@@ -119,15 +141,25 @@ export const Chatbot = () => {
 
                 return (
                   <div key={index} className="mb-2">
-                    <p className="text-gray-600">
-                      <strong>You:</strong> {msg["user"]}
-                    </p>
-                    <p className="text-gray-600">
-                      <strong>AI:</strong> {text}
-                      <span className="text-sm underline text-blue-500">
-                        {source}
-                      </span>
-                    </p>
+                    {msg["user"] &&
+                      <p className="text-gray-600">
+                        <strong>You:</strong> {msg["user"]}
+                      </p>
+                    }
+                    {
+                      (index == chatHistory.length - 1) &&  streamedResponse &&
+                      <p className="text-gray-600">
+                        <strong>AI:</strong> {streamedResponse}
+                      </p>
+                    }
+                    {msg["assistant"] &&
+                      <p className="text-gray-600">
+                        <strong>AI:</strong>{text}
+                        <span className="text-sm underline text-blue-500">
+                          {source}
+                        </span>
+                      </p>
+                    }
                   </div>
                 );
               })}
@@ -150,7 +182,6 @@ export const Chatbot = () => {
                 <div
                   key={item}
                   onClick={() => {
-                    console.log(item);
                     setMessage(item);
                     submitQuestion(item);
                   }}

@@ -1,21 +1,33 @@
+const { app } = require('@azure/functions');
 const { SearchClient, AzureKeyCredential } = require("@azure/search-documents");
 const { OpenAIClient } = require("@azure/openai");
 const OpenAI = require("openai")
 
-module.exports = async function (context, req) {
-    context.log('JavaScript HTTP trigger function processed a request.');
+app.setup({ enableHttpStream: true });
 
-    const question = req.query.question;
-    const topNDocs = await retrieveTopNDocuments(question);
-    const response = await getChatResponseOpenAI(question, topNDocs);
+const openai = new OpenAI({
+    apiKey: process.env["OPENAI_KEY"]
+});
 
-    context.res = {
-        // status: 200, /* Defaults to 200 */
-        body: {
-            text: response.choices[0].message.content
+app.http('chat', {
+    methods: ['GET', 'POST'],
+    authLevel: 'anonymous',
+    handler: async (request, context) => {
+        context.log(`Http function processed request for url "${request.url}"`);
+        
+        const question = request.query.get('question');
+        const topNDocs = await retrieveTopNDocuments(question);
+        const streamingOpenAIResponse = await getChatResponseOpenAI(question, topNDocs);
+        const processedStream = convertOpenAIStreamToExtractedContentStream(streamingOpenAIResponse);
+    
+        return {
+            body: processedStream,
+            headers: {
+                'Content-Type': 'text/event-stream'
+            }
         }
-    };
-}
+    }
+});
 
 async function retrieveTopNDocuments(query, n = 3){
     const aiSearchKey = process.env["AI_SEARCH_KEY"];
@@ -68,15 +80,23 @@ async function getChatResponseOpenAI(query, topNDocs){
 
     const QUESTION = `${query}\nSources:${topNDocsToString(topNDocs)}`;
 
-    const chatCompletion = await openai.chat.completions.create({
+    const streamingChatCompletion = await openai.beta.chat.completions.stream({
         messages: [{ role: 'system', content: `${SYSTEM_CHAT_TEMPLATE} ${SAMPLE_QUESTION} ${SAMPLE_ANSWER}`},
             {role: 'user', content: QUESTION}
         ],
         model: 'gpt-3.5-turbo',
+        stream: true
     });
+    
+    // const chatCompletion = await openai.chat.completions.create({
+    //     messages: [{ role: 'system', content: `${SYSTEM_CHAT_TEMPLATE} ${SAMPLE_QUESTION} ${SAMPLE_ANSWER}`},
+    //         {role: 'user', content: QUESTION}
+    //     ],
+    //     model: 'gpt-3.5-turbo',
+    // });
 
 
-    return chatCompletion;
+    return streamingChatCompletion;
 }
 
 //helpers
@@ -88,6 +108,26 @@ function topNDocsToString(topNDocs){
     }
     return topNDocsString;
 }
+
+function convertOpenAIStreamToExtractedContentStream(streamOpenAI){
+    let stream = new ReadableStream({
+        async start(controller) {
+            try {
+                for await (const part of streamOpenAI) {
+                    controller.enqueue(part.choices[0]?.delta.content || '');
+                }
+                controller.close();
+                return;
+            } catch (err) {
+                controller.close();
+                throw error(500, 'Error while processing data stream.')
+            }
+        },
+    })
+
+    return stream;
+}
+
 
 // async function getChatResponseAzureOpenAI(query, topNDocs){
 //     //adapted from https://github.com/Azure-Samples/azure-search-openai-javascript
