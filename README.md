@@ -1,6 +1,6 @@
 # Add a RAG chatbot to your content-heavy static site
 
-This is a sample project that demonstrates how to add a chatbot to your content-heavy static site. The chatbot is grounded in the content of the website by using the retrieval augmentated generation pattern. 
+This is a sample project that demonstrates how to add a chatbot to your content-focused static site. The chatbot is grounded in the content of the website by using the retrieval augmentated generation pattern. 
 
 This sample builds upon a Next.js static site that demonstrates a content-focused site. See the original blog post to find more information about the Next.js site itself. [Build an Azure Static Web Apps site using WordPress as a headless CMS](https://techcommunity.microsoft.com/t5/apps-on-azure-blog/building-an-azure-static-web-apps-site-using-wordpress-on-app/ba-p/4004955). 
 
