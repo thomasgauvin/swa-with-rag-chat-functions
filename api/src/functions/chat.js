@@ -5,12 +5,8 @@ const OpenAI = require("openai")
 
 app.setup({ enableHttpStream: true });
 
-const openai = new OpenAI({
-    apiKey: process.env["OPENAI_KEY"]
-});
-
 app.http('chat', {
-    methods: ['GET', 'POST'],
+    methods: ['GET'],
     authLevel: 'anonymous',
     handler: async (request, context) => {
         context.log(`Http function processed request for url "${request.url}"`);

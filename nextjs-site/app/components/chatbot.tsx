@@ -154,7 +154,7 @@ export const Chatbot = () => {
                     }
                     {msg["assistant"] &&
                       <p className="text-gray-600">
-                        <strong>AI:</strong>{text}
+                        <strong>AI:</strong> {text}
                         <span className="text-sm underline text-blue-500">
                           {source}
                         </span>
